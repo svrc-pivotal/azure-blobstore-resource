@@ -29,16 +29,21 @@ var _ = Describe("Check", func() {
 		deleteContainer(container)
 	})
 
-	Context("when given any version", func() {
+	Context("when given a version", func() {
 		var (
-			snapshotTimestamp *time.Time
+			snapshotTimestampCurrent *time.Time
+			snapshotTimestampNew     *time.Time
+			snapshotTimestampNewer   *time.Time
 		)
 
 		BeforeEach(func() {
-			snapshotTimestamp = createBlobWithSnapshot(container, "example.json")
+			createBlobWithSnapshot(container, "example.json")
+			snapshotTimestampCurrent = createBlobWithSnapshot(container, "example.json")
+			snapshotTimestampNew = createBlobWithSnapshot(container, "example.json")
+			snapshotTimestampNewer = createBlobWithSnapshot(container, "example.json")
 		})
 
-		It("returns just the latest blob snapshot version", func() {
+		FIt("returns just the latest blob snapshot version", func() {
 			check := exec.Command(pathToCheck)
 			check.Stderr = os.Stderr
 
@@ -52,11 +57,12 @@ var _ = Describe("Check", func() {
 						"container": %q,
 						"versioned_file": "example.json"
 					},
-					"version": { "snapshot": "2017-08-08T23:27:16.2942812Z" }
+					"version": { "snapshot": %q }
 				}`,
 				config.StorageAccountName,
 				config.StorageAccountKey,
 				container,
+				snapshotTimestampCurrent.Format(time.RFC3339Nano),
 			))
 			Expect(err).NotTo(HaveOccurred())
 
@@ -69,8 +75,10 @@ var _ = Describe("Check", func() {
 			err = json.Unmarshal(output, &versions)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(len(versions)).To(Equal(1))
-			Expect(versions[0].Snapshot).To(Equal(*snapshotTimestamp))
+			Expect(len(versions)).To(Equal(3))
+			Expect(versions[0].Snapshot).To(Equal(*snapshotTimestampCurrent))
+			Expect(versions[1].Snapshot).To(Equal(*snapshotTimestampNew))
+			Expect(versions[2].Snapshot).To(Equal(*snapshotTimestampNewer))
 		})
 	})
 
